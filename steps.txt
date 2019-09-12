@@ -1,0 +1,242 @@
+Add the below code in outside variables.tf .
+================================
+
+variable cloudtrail_name {
+
+ description = "Specify the name of the cloud trail"
+
+ default = "info-sec-cloudtrail" #Need to give the cloudtrail name as given in python code.
+
+}
+
+
+
+variable s3_bucket_name {
+
+  description = "Specify the name of the S3 bucket designated for publishing log files"
+
+  default = ""     #Need to give the s3 bucket name as given in python code
+
+}
+
+
+
+variable include_global_service_events {
+
+  type = "boolean"
+
+  description = "Specify whether the trail is publishing events from global services such as IAM to the log files."
+
+  default = true
+
+}
+
+
+
+variable is_multi_region_trail {
+
+  type = "boolean"
+
+  description = "Specify whether the trail is created in the current region or in all regions"
+
+  default = false #Needs to go either is_multi_region_trail or is_organization_trail. So we need to put the value true in either of these variables.
+
+}
+
+
+
+variable is_organization_trail {
+
+  type = "boolean"
+
+  description = "Specify whether the trail is an AWS Organizations trail. Organization trails log events for the master account and all member accounts. Can only be created in the organization master account"
+
+  default = false #Needs to go either is_multi_region_trail or is_organization_trail. So we need to put the value true in either of these variables.
+
+}
+
+
+
+variable include_management_events {
+
+  type = "boolean"
+
+  description = "Specify if you want your event selector to include management events for your trail"
+
+  default = true
+
+}
+
+
+
+variable read_write_type {
+
+  description = "Specify if you want your trail to log read-only events, write-only events, or all.You can specify only the following value: ReadOnly, WriteOnly, All"
+
+  default = ""   #Needs give value for read_write_type as given in python code
+
+}
+
+
+Add the below code in outside main.tf
+=============================
+
+module "cloudtrail" {
+
+  source   = "./modules/infosec-cloud-trail"
+
+
+
+  cloudtrail_name = "${var.cloudtrail_name}"
+
+
+
+  s3_bucket_name  = "${var.s3_bucket_name}"
+
+
+
+  include_global_service_events = "${var.include_global_service_events}"
+
+
+
+  #is_multi_region_trail = "${var.is_multi_region_trail}"  #we have to keep either is_multi_region_trail or is_organization_trail
+
+
+
+  #is_organization_trail = "${var.is_organization_trail}"  #we have to keep either is_multi_region_trail or is_organization_trail
+
+
+
+  include_management_events = "${var.include_management_events}"
+
+
+
+  read_write_type = "${var.read_write_type}"
+
+}
+
+
+Add the below code in outside outputs.tf
+===============================
+
+output "cloudtrail_id" {
+
+  value = "${module.cloudtrail.cloudtrail_id}"
+
+}
+
+output "cloudtrail_home_region" {
+
+  value = "${module.cloudtrail.cloudtrail_home_region}"
+
+}
+
+output "cloudtrail_arn" {
+
+  value = "${module.cloudtrail.cloudtrail_arn}"
+
+}
+
+
+* Create a directory "infosec-cloud-trail" inside modules and then create main.tf, variables.tf and output.tf.
+
+Add the below code in infosec-cloud-trail/main.tf
+=================================================
+
+resource "aws_cloudtrail" "info-sec-cloudtrial" {
+
+  name                          = "${var.cloudtrail_name}"
+
+  s3_bucket_name                = "${var.s3_bucket_name}"
+
+  include_global_service_events = "${var.s3_bucket_name}"
+
+  is_multi_region_trail         = "${var.is_multi_region_trail}"
+
+  is_organization_trail         = "${var.is_organization_trail}"
+
+
+
+  event_selector {
+
+    read_write_type           = "${var.read_write_type}"
+
+    include_management_events = "${var.read_write_type}"
+
+
+
+    data_resource {
+
+      type   = "AWS::S3::Object" #Needs to give the same value as given in python code.
+
+      values = ["arn:aws:s3:::"] #Needs to give the sane value as given in python code.
+
+    }
+
+    data_resource {
+
+      type   = "AWS::Lambda::Function"  #Needs to give the sane value as given in python code.
+
+      values = ["arn:aws:lambda"]       #Needs to give the sane value as given in python code.
+
+    }
+
+  }
+
+}
+
+
+
+Add the below code in infosec-cloud-trail/variables.tf
+
+======================================================
+
+
+
+variable cloudtrail_name {}
+
+variable s3_bucket_name {}
+
+variable include_global_service_events {}
+
+variable is_multi_region_trail {}
+
+variable is_organization_trail {}
+
+variable include_management_events {}
+
+
+variable read_write_type {}
+
+
+
+Add the below code in infosec-cloud-trail/output.tf
+
+===================================================
+
+
+
+# Pull out cloudtrail id, home_region and arn
+
+output "cloudtrail_id" {
+
+   value = "${aws_cloudtrail.info-sec-cloudtrial.*.id}"
+
+}
+
+
+
+output "cloudtrail_home_region" {
+
+   value = "${aws_cloudtrail.info-sec-cloudtrial.*.home_region}"
+
+}
+
+
+
+output "cloudtrail_arn" {
+
+   value = "${aws_cloudtrail.info-sec-cloudtrial.*.arn}"
+
+
+}
